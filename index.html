@@ -4,39 +4,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XBM Image Generator</title>
-    <link rel="stylesheet" type="text/css" href="styles.css">
+    <title>XBM Image Generator</title> 
+    <link rel="stylesheet" type="text/css" href="styles.css"> <!---->
+<!--     <style>
+        h1 {
+            margin: 0;
+            padding: 0.5em 1em;
+            ;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        td {
+            width: 3px;
+            height: 3px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        #codeOutput {
+            white-space: pre-wrap;
+        }
+
+        .dark-colors {
+            background: #000;
+            color: #FFF;
+        }
+
+        .btns-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding-left: 2em;
+        }
+
+        #widthInput {
+            max-width: 5em;
+            margin-bottom: 10px;
+        }
+
+        #heightInput {
+            max-width: 5em;
+            margin-bottom: 10px;
+        }
+
+        #fileInput {
+            margin-bottom: 10px;
+        }
+
+        button {
+            margin-bottom: 10px;
+        }
+
+        .table-container {
+            display: flex;
+            align-items: center;
+            margin-left: 2em;
+        }
+    </style> -->
 </head>
 
 <body class="dark-colors">
-    <div>
-        <h1>XBM Image Generator</h1>
+    <h1>XBM Image Generator</h1>
+    <div class="btns-container">
+        <input type="file" id="fileInput" accept=".xbm" onchange="readFile()">
 
-        <label for="widthInput">Width:</label>
-        <input type="number" id="widthInput" value="32" min="1" oninput="updateMatrix()">
+        <div>
+            <label for="widthInput">Width:</label>
+            <input type="number" id="widthInput" value="16" min="1" oninput="updateMatrix()">
+            <label for="heightInput">Height:</label>
+            <input type="number" id="heightInput" value="16" min="1" oninput="updateMatrix()">
+        </div>
 
-        <label for="heightInput">Height:</label>
-        <input type="number" id="heightInput" value="32" min="1" oninput="updateMatrix()">
-
-        <label for="nameInput">Image Name:</label>
-        <input type="text" id="nameInput" value="my_image">
-
-        <button onclick="generateXBM()">Generate</button>
         <button onclick="invertColors()">Invert Colors</button>
+        <button onclick="resetColors()">Reset Colors</button>
 
-        <table id="pixelTable"></table>
+        <div>
+            <button onclick="generateXBM()">Generate</button>
+            <input type="text" id="nameInput" value="my_image">
+        </div>
 
-        <pre id="codeOutput"></pre>
+        <div>
+            <label for="cellSizeSlider">Cell Size:</label>
+            <input type="range" id="cellSizeSlider" min="1" max="20" value="2" oninput="updateCellSize()">
+            <span id="cellSizeValue">2</span> px
+        </div>
+        <div>s
+            <label for="borderOpacitySlider">Border Opacity:</label>
+            <input type="range" id="borderOpacitySlider" min="0" max="100" step="1" value="20"
+                oninput="updateBorderOpacity()">
+            <span id="borderOpacityValue">0.2</span>
+        </div>
     </div>
 
+    <div class="table-container">
+        <table id="pixelTable"></table>
+    </div>
+
+
+    <pre id="codeOutput"></pre>
+
     <script>
-        let isMouseDown = false;
-        let width = 16;
-        let height = 16;
+        let isMouseDown;
+        let width;
+        let height;
         let matrix = [];
-        let currentColor = 0; // 0:white, 1:black
+        let currentColor; // 0:white, 1:black
 
         initializeMatrix();
+        updateBorderOpacity();
+        updateCellSize();
 
         function initializeMatrix() {
             currentColor = 0;
@@ -70,6 +150,7 @@
                 }
                 table.appendChild(tr);
             }
+
         }
 
         function togglePixel(row, col) {
@@ -89,6 +170,8 @@
 
         function updateMatrix() {
             initializeMatrix();
+            updateBorderOpacity();
+            updateCellSize();
         }
 
         function generateXBM() {
@@ -99,24 +182,105 @@
         }
 
         function generateXBMCode(name, matrix) {
-            let code = `#define ${name}_height ${height}\n`;
-            code += `#define ${name}_width ${width}\n`;
-            code += `const uint8_t ${name}_bits[] PROGMEM = {\n`;
-            for (let row = 0; row < height; row += 8) {
+            let code = `#define ${name}_width ${width}\n`;
+            code += `#define ${name}_height ${height}\n`;
+            code += `static uint8_t ${name}_bits[] = {\n`;
+            for (let row = 0; row < height; row++) {
+                let byte = '';
+                let count = 0;
                 for (let col = 0; col < width; col++) {
-                    let byte = 0;
-                    for (let i = 0; i < 8; i++) {
-                        if (row + i < height) {
-                            byte |= (matrix[row + i][col] << i);
+                    for (let bit = 0; col < width; col++) {
+                        byte = matrix[row][col].toString() + byte;
+                        count += 1;
+                        if (col === width - 1) {
+                            byte = byte.padStart(8, '0');
+                        }
+                        if (byte.length === 8) {
+                            code += `0b${byte}, `;
+                            byte = '';
+                        }
+                        if (col === width - 1) {
+                            code += '\n'
                         }
                     }
-                    code += `  0x${byte.toString(16)}, `;
                 }
-                code += '\n';
             }
             code += '};\n';
             return code;
         }
+
+        function readFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const content = e.target.result;
+                    processXBMContent(content);
+                    updateBorderOpacity();
+                    updateCellSize();
+                };
+                reader.readAsText(file);
+            }
+        }
+
+
+        function processXBMContent(content) {
+            const nameMatch = content.match(/#define (\d+)_width (\d+)/);
+            const widthMatch = content.match(/#define (\d+)_width (\d+)/);
+            const heightMatch = content.match(/#define (\d+)_height (\d+)/);
+            const bitsMatch = content.match(/static char (\d+)_bits\[] = \{([\s\S]*?)\};/);
+
+            if (nameMatch && widthMatch && heightMatch && bitsMatch) {
+                let [, name] = nameMatch[1];
+                width = widthMatch[2];
+                height = heightMatch[2];
+                let bits = bitsMatch[2];
+                const newWidth = parseInt(width, 10);
+                const newHeight = parseInt(height, 10);
+                bits = bits.trim().replace(/\n/g, '').replace(/,\s*$/, '');
+                const newMatrix = bits.split(',').map(bit => parseInt(bit.trim(), 0));
+
+                width = newWidth;
+                height = newHeight;
+                matrix = [];
+                document.getElementById('heightInput').value = height;
+                document.getElementById('widthInput').value = width;
+                initializeMatrix();
+                /*
+                for (let i = 0; i < newHeight; i++) {
+                   const rowStart = i * newWidth;
+                   const rowEnd = rowStart + newWidth;
+                   matrix.push(newMatrix.slice(rowStart, rowEnd));
+                }*/
+                const table = document.getElementById('pixelTable');
+                for (let row = 0; row < height; row++) {
+                    const colByts = width / 8
+                    const colRest = width % 8
+
+                    let colBits = newMatrix.splice(0, colByts);
+                    if (colRest) {
+                        colBits = [].concat(...colBits, newMatrix.splice(0, 1));
+                    }
+
+                    let binaryString = '';
+                    for (let index = 0; index < colBits.length; index++) {
+                        binaryString = colBits[index].toString(2).padStart(8, '0') + binaryString;
+                    }
+
+                    for (let col = width - 1; col >= 0; col--) {
+                        const value = parseInt(binaryString.charAt(col), 10);
+                        const td = table.rows[row].cells[width - col - 1];
+                        td.style.backgroundColor = value === 1 ? 'white' : 'black';
+                        matrix[row][width - col - 1] = value;
+                    }
+                }
+            } else {
+                alert('El contenido del archivo XBM no está en el formato esperado.');
+            }
+        }
+
 
         function invertColors() {
             for (let row = 0; row < height; row++) {
@@ -126,6 +290,59 @@
             }
             updateTable();
         }
+
+        function resetColors() {
+            for (let row = 0; row < height; row++) {
+                for (let col = 0; col < width; col++) {
+                    matrix[row][col] = 0;
+                }
+            }
+            updateTable();
+        }
+
+        function updateCellSize() {
+            const cellSizeSlider = document.getElementById('cellSizeSlider');
+            const cellSizeValue = document.getElementById('cellSizeValue');
+
+            // Obtiene el valor actual del slider
+            const newSize = parseInt(cellSizeSlider.value, 10);
+
+            // Actualiza el texto de la etiqueta que muestra el valor del slider
+            cellSizeValue.textContent = newSize;
+
+            // Actualiza el ancho y alto de cada celda en la tabla
+            const table = document.getElementById('pixelTable');
+            for (let row = 0; row < height; row++) {
+                for (let col = 0; col < width; col++) {
+                    const td = table.rows[row].cells[col];
+                    td.style.width = newSize + 'px';
+                    td.style.height = newSize + 'px';
+                }
+            }
+        }
+
+        // Agrega esta función para actualizar la opacidad del borde de las celdas
+        function updateBorderOpacity() {
+            const borderOpacitySlider = document.getElementById('borderOpacitySlider');
+            const borderOpacityValue = document.getElementById('borderOpacityValue');
+
+            // Obtiene el valor actual del slider
+            const newOpacity = parseFloat(borderOpacitySlider.value) / 100;
+
+            // Actualiza el texto de la etiqueta que muestra el valor del slider
+            borderOpacityValue.textContent = newOpacity;
+
+            // Actualiza la opacidad del borde de cada celda en la tabla
+            const table = document.getElementById('pixelTable');
+            for (let row = 0; row < height; row++) {
+                for (let col = 0; col < width; col++) {
+                    const td = table.rows[row].cells[col];
+                    td.style.border = `1px solid rgba(255, 255, 255, ${newOpacity})`;
+                }
+            }
+        }
+
+
 
     </script>
 </body>

@@ -1,11 +1,17 @@
+h1 {
+    margin: 0;
+    padding: 0.5em 1em;
+    ;
+}
+
 table {
     border-collapse: collapse;
     margin: 20px 0;
 }
 
 td {
-    width: 10px;
-    height: 10px;
+    width: 3px;
+    height: 3px;
     border: 1px solid #ccc;
     cursor: pointer;
 }
@@ -17,4 +23,35 @@ td {
 .dark-colors {
     background: #000;
     color: #FFF;
+}
+
+.btns-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-left: 2em;
+}
+
+#widthInput {
+    max-width: 5em;
+    margin-bottom: 10px;
+}
+
+#heightInput {
+    max-width: 5em;
+    margin-bottom: 10px;
+}
+
+#fileInput {
+    margin-bottom: 10px;
+}
+
+button {
+    margin-bottom: 10px;
+}
+
+.table-container {
+    display: flex;
+    align-items: center;
+    margin-left: 2em;
 }
