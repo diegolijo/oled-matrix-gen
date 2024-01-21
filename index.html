@@ -26,10 +26,10 @@
   <h1>XBM Image Generator</h1>
 
   <label for="widthInput">Width:</label>
-  <input type="number" id="widthInput" value="32" min="1">
+  <input type="number" id="widthInput" value="32" min="1" oninput="updateMatrix()">
 
   <label for="heightInput">Height:</label>
-  <input type="number" id="heightInput" value="32" min="1">
+  <input type="number" id="heightInput" value="32" min="1" oninput="updateMatrix()">
 
   <label for="nameInput">Image Name:</label>
   <input type="text" id="nameInput" value="my_image">
@@ -41,12 +41,16 @@
   <pre id="codeOutput"></pre>
 
   <script>
+    let isMouseDown = false;
     let width = 32;
     let height = 32;
     let matrix = [];
     initializeMatrix();
 
     function initializeMatrix() {
+      width = parseInt(document.getElementById('widthInput').value, 10);
+      height = parseInt(document.getElementById('heightInput').value, 10);
+
       const table = document.getElementById('pixelTable');
       table.innerHTML = '';
 
@@ -56,7 +60,18 @@
         
         for (let col = 0; col < width; col++) {
           const td = document.createElement('td');
-          td.addEventListener('click', () => togglePixel(row, col));
+          td.addEventListener('mousedown', () => {
+            isMouseDown = true;
+            togglePixel(row, col);
+          });
+          td.addEventListener('mouseover', () => {
+            if (isMouseDown) {
+              togglePixel(row, col);
+            }
+          });
+          td.addEventListener('mouseup', () => {
+            isMouseDown = false;
+          });
           tr.appendChild(td);
           matrix[row][col] = 0;
         }
@@ -79,6 +94,10 @@
           td.style.backgroundColor = matrix[row][col] ? 'black' : 'white';
         }
       }
+    }
+
+    function updateMatrix() {
+      initializeMatrix();
     }
 
     function generateXBM() {
