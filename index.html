@@ -1,133 +1,133 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>XBM Image Generator</title>
-  <style>
-    table {
-      border-collapse: collapse;
-      margin: 20px 0;
-    }
-
-    td {
-      width: 10px;
-      height: 10px;
-      border: 1px solid #ccc;
-      cursor: pointer;
-    }
-
-    #codeOutput {
-      white-space: pre-wrap;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XBM Image Generator</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
-<body>
-  <h1>XBM Image Generator</h1>
 
-  <label for="widthInput">Width:</label>
-  <input type="number" id="widthInput" value="32" min="1" oninput="updateMatrix()">
+<body class="dark-colors">
+    <div>
+        <h1>XBM Image Generator</h1>
 
-  <label for="heightInput">Height:</label>
-  <input type="number" id="heightInput" value="32" min="1" oninput="updateMatrix()">
+        <label for="widthInput">Width:</label>
+        <input type="number" id="widthInput" value="32" min="1" oninput="updateMatrix()">
 
-  <label for="nameInput">Image Name:</label>
-  <input type="text" id="nameInput" value="my_image">
+        <label for="heightInput">Height:</label>
+        <input type="number" id="heightInput" value="32" min="1" oninput="updateMatrix()">
 
-  <button onclick="generateXBM()">Generate</button>
+        <label for="nameInput">Image Name:</label>
+        <input type="text" id="nameInput" value="my_image">
 
-  <table id="pixelTable"></table>
+        <button onclick="generateXBM()">Generate</button>
+        <button onclick="invertColors()">Invert Colors</button>
 
-  <pre id="codeOutput"></pre>
+        <table id="pixelTable"></table>
 
-  <script>
-    let isMouseDown = false;
-    let width = 32;
-    let height = 32;
-    let matrix = [];
-    initializeMatrix();
+        <pre id="codeOutput"></pre>
+    </div>
 
-    function initializeMatrix() {
-      width = parseInt(document.getElementById('widthInput').value, 10);
-      height = parseInt(document.getElementById('heightInput').value, 10);
+    <script>
+        let isMouseDown = false;
+        let width = 16;
+        let height = 16;
+        let matrix = [];
+        let currentColor = 0; // 0:white, 1:black
 
-      const table = document.getElementById('pixelTable');
-      table.innerHTML = '';
+        initializeMatrix();
 
-      for (let row = 0; row < height; row++) {
-        const tr = document.createElement('tr');
-        matrix[row] = [];
-        
-        for (let col = 0; col < width; col++) {
-          const td = document.createElement('td');
-          td.addEventListener('mousedown', () => {
-            isMouseDown = true;
-            togglePixel(row, col);
-          });
-          td.addEventListener('mouseover', () => {
-            if (isMouseDown) {
-              togglePixel(row, col);
+        function initializeMatrix() {
+            currentColor = 0;
+            width = parseInt(document.getElementById('widthInput').value, 10);
+            height = parseInt(document.getElementById('heightInput').value, 10);
+
+            const table = document.getElementById('pixelTable');
+            table.innerHTML = '';
+
+            for (let row = 0; row < height; row++) {
+                const tr = document.createElement('tr');
+                matrix[row] = [];
+                for (let col = 0; col < width; col++) {
+                    const td = document.createElement('td');
+                    td.addEventListener('mousedown', () => {
+                        isMouseDown = true;
+                        currentColor = 1 - matrix[row][col];
+                        togglePixel(row, col);
+                    });
+                    td.addEventListener('mouseover', () => {
+                        if (isMouseDown) {
+                            matrix[row][col] = currentColor;
+                            updateTable();
+                        }
+                    });
+                    td.addEventListener('mouseup', () => {
+                        isMouseDown = false;
+                    });
+                    tr.appendChild(td);
+                    matrix[row][col] = 0;
+                }
+                table.appendChild(tr);
             }
-          });
-          td.addEventListener('mouseup', () => {
-            isMouseDown = false;
-          });
-          tr.appendChild(td);
-          matrix[row][col] = 0;
         }
 
-        table.appendChild(tr);
-      }
-    }
-
-    function togglePixel(row, col) {
-      matrix[row][col] = 1 - matrix[row][col];
-      updateTable();
-    }
-
-    function updateTable() {
-      const table = document.getElementById('pixelTable');
-
-      for (let row = 0; row < height; row++) {
-        for (let col = 0; col < width; col++) {
-          const td = table.rows[row].cells[col];
-          td.style.backgroundColor = matrix[row][col] ? 'black' : 'white';
+        function togglePixel(row, col) {
+            matrix[row][col] = 1 - matrix[row][col];
+            updateTable();
         }
-      }
-    }
 
-    function updateMatrix() {
-      initializeMatrix();
-    }
-
-    function generateXBM() {
-      const name = document.getElementById('nameInput').value;
-      const codeOutput = document.getElementById('codeOutput');
-      const xbmCode = generateXBMCode(name, matrix);
-      codeOutput.textContent = xbmCode;
-    }
-
-    function generateXBMCode(name, matrix) {
-      let code = `#define ${name}_height ${height}\n`;
-      code += `#define ${name}_width ${width}\n`;
-      code += `const uint8_t ${name}_bits[] PROGMEM = {\n`;
-
-      for (let row = 0; row < height; row += 8) {
-        for (let col = 0; col < width; col++) {
-          let byte = 0;
-          for (let i = 0; i < 8; i++) {
-            if (row + i < height) {
-              byte |= (matrix[row + i][col] << i);
+        function updateTable() {
+            const table = document.getElementById('pixelTable');
+            for (let row = 0; row < height; row++) {
+                for (let col = 0; col < width; col++) {
+                    const td = table.rows[row].cells[col];
+                    td.style.backgroundColor = matrix[row][col] ? 'white' : 'black';
+                }
             }
-          }
-          code += `  0x${byte.toString(16)}, `;
         }
-        code += '\n';
-      }
 
-      code += '};\n';
-      return code;
-    }
-  </script>
+        function updateMatrix() {
+            initializeMatrix();
+        }
+
+        function generateXBM() {
+            const name = document.getElementById('nameInput').value;
+            const codeOutput = document.getElementById('codeOutput');
+            const xbmCode = generateXBMCode(name, matrix);
+            codeOutput.textContent = xbmCode;
+        }
+
+        function generateXBMCode(name, matrix) {
+            let code = `#define ${name}_height ${height}\n`;
+            code += `#define ${name}_width ${width}\n`;
+            code += `const uint8_t ${name}_bits[] PROGMEM = {\n`;
+            for (let row = 0; row < height; row += 8) {
+                for (let col = 0; col < width; col++) {
+                    let byte = 0;
+                    for (let i = 0; i < 8; i++) {
+                        if (row + i < height) {
+                            byte |= (matrix[row + i][col] << i);
+                        }
+                    }
+                    code += `  0x${byte.toString(16)}, `;
+                }
+                code += '\n';
+            }
+            code += '};\n';
+            return code;
+        }
+
+        function invertColors() {
+            for (let row = 0; row < height; row++) {
+                for (let col = 0; col < width; col++) {
+                    matrix[row][col] = 1 - matrix[row][col];
+                }
+            }
+            updateTable();
+        }
+
+    </script>
 </body>
+
 </html>

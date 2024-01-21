@@ -1,0 +1,20 @@
+table {
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+td {
+    width: 10px;
+    height: 10px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+
+#codeOutput {
+    white-space: pre-wrap;
+}
+
+.dark-colors {
+    background: #000;
+    color: #FFF;
+}
