@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XBM Image Generator</title> 
-    <link rel="stylesheet" type="text/css" href="styles.css"> <!---->
-<!--     <style>
+    <title>XBM Image Generator</title>
+
+    <style>
         h1 {
             margin: 0;
             padding: 0.5em 1em;
@@ -64,7 +64,7 @@
             align-items: center;
             margin-left: 2em;
         }
-    </style> -->
+    </style>
 </head>
 
 <body class="dark-colors">
@@ -81,6 +81,7 @@
 
         <button onclick="invertColors()">Invert Colors</button>
         <button onclick="resetColors()">Reset Colors</button>
+        <button id="toggleFormatBtn" onclick="toggleFormat()">Switch to Hex</button>
 
         <div>
             <button onclick="generateXBM()">Generate</button>
@@ -92,7 +93,7 @@
             <input type="range" id="cellSizeSlider" min="1" max="20" value="2" oninput="updateCellSize()">
             <span id="cellSizeValue">2</span> px
         </div>
-        <div>s
+        <div>
             <label for="borderOpacitySlider">Border Opacity:</label>
             <input type="range" id="borderOpacitySlider" min="0" max="100" step="1" value="20"
                 oninput="updateBorderOpacity()">
@@ -104,7 +105,6 @@
         <table id="pixelTable"></table>
     </div>
 
-
     <pre id="codeOutput"></pre>
 
     <script>
@@ -113,6 +113,7 @@
         let height;
         let matrix = [];
         let currentColor; // 0:white, 1:black
+        let formatHex = false; // false=binario, true=hexadecimal
 
         initializeMatrix();
         updateBorderOpacity();
@@ -138,19 +139,20 @@
                     });
                     td.addEventListener('mouseover', () => {
                         if (isMouseDown) {
-                            matrix[row][col] = currentColor;
+                            matrix[row][col] = matrix[row][col].editting ? 1 - matrix[row][col] : currentColor;
+                            matrix[row][col].editting = true;
                             updateTable();
                         }
                     });
                     td.addEventListener('mouseup', () => {
                         isMouseDown = false;
+                        matrix.forEach(row => row.forEach(col => col.editting = false));
                     });
                     tr.appendChild(td);
                     matrix[row][col] = 0;
                 }
                 table.appendChild(tr);
             }
-
         }
 
         function togglePixel(row, col) {
@@ -185,28 +187,47 @@
             let code = `#define ${name}_width ${width}\n`;
             code += `#define ${name}_height ${height}\n`;
             code += `static uint8_t ${name}_bits[] = {\n`;
+
             for (let row = 0; row < height; row++) {
                 let byte = '';
-                let count = 0;
                 for (let col = 0; col < width; col++) {
-                    for (let bit = 0; col < width; col++) {
-                        byte = matrix[row][col].toString() + byte;
-                        count += 1;
-                        if (col === width - 1) {
-                            byte = byte.padStart(8, '0');
-                        }
-                        if (byte.length === 8) {
+                    byte = matrix[row][col].toString() + byte;
+                    if (byte.length === 8) {
+                        if (formatHex) {
+                            const hexValue = parseInt(byte, 2).toString(16).padStart(2, '0');
+                            code += `0x${hexValue}, `;
+                        } else {
                             code += `0b${byte}, `;
-                            byte = '';
                         }
-                        if (col === width - 1) {
-                            code += '\n'
-                        }
+                        byte = '';
                     }
                 }
+                if (byte.length > 0) {
+                    byte = byte.padStart(8, '0');
+                    if (formatHex) {
+                        const hexValue = parseInt(byte, 2).toString(16).padStart(2, '0');
+                        code += `0x${hexValue}, `;
+                    } else {
+                        code += `0b${byte}, `;
+                    }
+                }
+                code += '\n';
             }
             code += '};\n';
             return code;
+        }
+
+        function toggleFormat() {
+            formatHex = !formatHex;
+            if (document.getElementById('codeOutput').textContent) {
+                generateXBM(); // Regenera el código si ya hay algo mostrado
+            }
+            updateFormatButtonText();
+        }
+
+        function updateFormatButtonText() {
+            const btn = document.getElementById('toggleFormatBtn');
+            btn.textContent = formatHex ? 'Switch to Binary' : 'Switch to Hex';
         }
 
         function readFile() {
@@ -224,7 +245,6 @@
                 reader.readAsText(file);
             }
         }
-
 
         function processXBMContent(content) {
             const nameMatch = content.match(/#define (\d+)_width (\d+)/);
@@ -248,16 +268,11 @@
                 document.getElementById('heightInput').value = height;
                 document.getElementById('widthInput').value = width;
                 initializeMatrix();
-                /*
-                for (let i = 0; i < newHeight; i++) {
-                   const rowStart = i * newWidth;
-                   const rowEnd = rowStart + newWidth;
-                   matrix.push(newMatrix.slice(rowStart, rowEnd));
-                }*/
+
                 const table = document.getElementById('pixelTable');
                 for (let row = 0; row < height; row++) {
-                    const colByts = width / 8
-                    const colRest = width % 8
+                    const colByts = width / 8;
+                    const colRest = width % 8;
 
                     let colBits = newMatrix.splice(0, colByts);
                     if (colRest) {
@@ -281,7 +296,6 @@
             }
         }
 
-
         function invertColors() {
             for (let row = 0; row < height; row++) {
                 for (let col = 0; col < width; col++) {
@@ -304,13 +318,9 @@
             const cellSizeSlider = document.getElementById('cellSizeSlider');
             const cellSizeValue = document.getElementById('cellSizeValue');
 
-            // Obtiene el valor actual del slider
             const newSize = parseInt(cellSizeSlider.value, 10);
-
-            // Actualiza el texto de la etiqueta que muestra el valor del slider
             cellSizeValue.textContent = newSize;
 
-            // Actualiza el ancho y alto de cada celda en la tabla
             const table = document.getElementById('pixelTable');
             for (let row = 0; row < height; row++) {
                 for (let col = 0; col < width; col++) {
@@ -321,18 +331,13 @@
             }
         }
 
-        // Agrega esta función para actualizar la opacidad del borde de las celdas
         function updateBorderOpacity() {
             const borderOpacitySlider = document.getElementById('borderOpacitySlider');
             const borderOpacityValue = document.getElementById('borderOpacityValue');
 
-            // Obtiene el valor actual del slider
             const newOpacity = parseFloat(borderOpacitySlider.value) / 100;
-
-            // Actualiza el texto de la etiqueta que muestra el valor del slider
             borderOpacityValue.textContent = newOpacity;
 
-            // Actualiza la opacidad del borde de cada celda en la tabla
             const table = document.getElementById('pixelTable');
             for (let row = 0; row < height; row++) {
                 for (let col = 0; col < width; col++) {
@@ -341,9 +346,6 @@
                 }
             }
         }
-
-
-
     </script>
 </body>
 
